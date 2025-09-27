@@ -72,6 +72,12 @@ show_commits() {
 
 while true; do
     choice=$(show_main_menu)
+
+    if [ -z "$choice" ]; then
+        echo "Выход"
+        exit 0
+    fi
+
     case "$choice" in
         "Выбор ветки") change_branch ;;
         "Список коммитов") show_commits ;;
