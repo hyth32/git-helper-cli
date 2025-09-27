@@ -20,10 +20,18 @@ build_fzf_menu() {
 
 current_branch=$(git symbolic-ref --short HEAD)
 
+print_current_branch() {
+    echo "Текущая ветка: $current_branch"
+}
+
+return_to_menu() {
+    read -p "Нажмите Enter, чтобы вернуться в меню"
+}
+
 show_main_menu() {
     actions=("Выбор ветки" "Список коммитов" "Коммит" "Выход")
     build_fzf_menu \
-        "Текущая ветка: $current_branch" \
+        "$(print_current_branch)" \
         "Выберите действие: " \
         "${actions[@]}"
 }
@@ -70,6 +78,46 @@ show_commits() {
     fi
 }
 
+commit_changes() {
+    if git diff --cached --quiet && git diff --quiet; then
+        echo "Нет изменений для коммита"
+        return_to_menu
+        return
+    fi
+
+    print_current_branch
+    git add .
+
+    echo "Введите сообщение для коммита (оставьте пустым для отмены):"
+    read commit_message
+
+    if [ -z "$commit_message" ]; then
+        git reset
+        echo "Коммит отменен"
+        return_to_menu
+        return
+    fi
+
+    git commit -m "$commit_message"
+
+    actions="Да"$'\n'"Нет"
+    selected_action=$(
+        build_fzf_menu \
+            "Запушить коммит?" \
+            "Выберите:" \
+            "$actions"
+    )
+
+    if [ "$selected_action" == "Да" ]; then
+        git push
+        echo "Коммит запушен"
+    else
+        echo "Коммит создан локально"
+    fi
+
+    return_to_menu
+}
+
 while true; do
     choice=$(show_main_menu)
 
@@ -81,7 +129,7 @@ while true; do
     case "$choice" in
         "Выбор ветки") change_branch ;;
         "Список коммитов") show_commits ;;
-        "Коммит") echo "Здесь будет логика коммита"; read -p "Нажмите Enter, чтобы вернуться в меню" ;;
+        "Коммит") commit_changes ;;
         "Выход") echo "Выход"; exit 0 ;;
         *) echo "Неверный выбор" ;;
     esac
