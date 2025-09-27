@@ -20,10 +20,18 @@ build_fzf_menu() {
 
 current_branch=$(git symbolic-ref --short HEAD)
 
+print_current_branch() {
+    echo "Текущая ветка: $current_branch"
+}
+
+return_to_menu() {
+    read -p "Нажмите Enter, чтобы вернуться в меню"
+}
+
 show_main_menu() {
     actions=("Выбор ветки" "Список коммитов" "Коммит" "Выход")
     build_fzf_menu \
-        "Текущая ветка: $current_branch" \
+        "$(print_current_branch)" \
         "Выберите действие: " \
         "${actions[@]}"
 }
@@ -73,10 +81,11 @@ show_commits() {
 commit_changes() {
     if git diff --cached --quiet && git diff --quiet; then
         echo "Нет изменений для коммита"
-        read -p "Нажмите Enter, чтобы вернуться в меню"
+        return_to_menu
         return
     fi
 
+    print_current_branch
     git add .
 
     echo "Введите сообщение для коммита (оставьте пустым для отмены):"
@@ -85,28 +94,28 @@ commit_changes() {
     if [ -z "$commit_message" ]; then
         git reset
         echo "Коммит отменен"
-        read -p "Нажмите Enter, чтобы вернуться в меню"
+        return_to_menu
         return
     fi
 
     git commit -m "$commit_message"
 
     actions="Да"$'\n'"Нет"
-    action=$(
+    selected_action=$(
         build_fzf_menu \
             "Запушить коммит?" \
             "Выберите:" \
             "$actions"
     )
 
-    if [ "$action" == "Да" ]; then
+    if [ "$selected_action" == "Да" ]; then
         git push
         echo "Коммит запушен"
     else
         echo "Коммит создан локально"
     fi
 
-    read -p "Нажмите Enter, чтобы вернуться в меню"
+    return_to_menu
 }
 
 while true; do
