@@ -21,7 +21,7 @@ build_fzf_menu() {
 current_branch=$(git symbolic-ref --short HEAD)
 
 show_main_menu() {
-    actions=("Выбор ветки" "Последние коммиты" "Коммит" "Выход")
+    actions=("Выбор ветки" "Список коммитов" "Коммит" "Выход")
     build_fzf_menu \
         "Текущая ветка: $current_branch" \
         "Выберите действие: " \
@@ -49,11 +49,32 @@ change_branch() {
     fi
 }
 
+show_commits() {
+    commits=$(git log --oneline)
+    commits="Назад"$'\n'"$commits"
+
+    selected_commit=$(
+        build_fzf_menu \
+            "Список коммитов (доступен скролл стрелками)" \
+            "Выберите коммит" \
+            "$commits"
+    )
+
+    if [ -z "$selected_commit" ] || [ "$selected_commit" == "Назад" ]; then
+        return
+    else
+        commit_hash=$(echo "$selected_commit" | awk '{print $1}')
+        clear
+        echo "Детали коммита $commit_hash:"
+        git show --stat --color=always "$commit_hash" | less -R
+    fi
+}
+
 while true; do
     choice=$(show_main_menu)
     case "$choice" in
         "Выбор ветки") change_branch ;;
-        "Последние коммиты") echo "Здесь будет список последних коммитов" ;;
+        "Список коммитов") show_commits ;;
         "Коммит") echo "Здесь будет логика коммита"; read -p "Нажмите Enter, чтобы вернуться в меню" ;;
         "Выход") echo "Выход"; exit 0 ;;
         *) echo "Неверный выбор" ;;
