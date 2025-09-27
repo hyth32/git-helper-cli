@@ -70,6 +70,45 @@ show_commits() {
     fi
 }
 
+commit_changes() {
+    if git diff --cached --quiet && git diff --quiet; then
+        echo "Нет изменений для коммита"
+        read -p "Нажмите Enter, чтобы вернуться в меню"
+        return
+    fi
+
+    git add .
+
+    echo "Введите сообщение для коммита (оставьте пустым для отмены):"
+    read commit_message
+
+    if [ -z "$commit_message" ]; then
+        git reset
+        echo "Коммит отменен"
+        read -p "Нажмите Enter, чтобы вернуться в меню"
+        return
+    fi
+
+    git commit -m "$commit_message"
+
+    actions="Да"$'\n'"Нет"
+    action=$(
+        build_fzf_menu \
+            "Запушить коммит?" \
+            "Выберите:" \
+            "$actions"
+    )
+
+    if [ "$action" == "Да" ]; then
+        git push
+        echo "Коммит запушен"
+    else
+        echo "Коммит создан локально"
+    fi
+
+    read -p "Нажмите Enter, чтобы вернуться в меню"
+}
+
 while true; do
     choice=$(show_main_menu)
 
@@ -81,7 +120,7 @@ while true; do
     case "$choice" in
         "Выбор ветки") change_branch ;;
         "Список коммитов") show_commits ;;
-        "Коммит") echo "Здесь будет логика коммита"; read -p "Нажмите Enter, чтобы вернуться в меню" ;;
+        "Коммит") commit_changes ;;
         "Выход") echo "Выход"; exit 0 ;;
         *) echo "Неверный выбор" ;;
     esac
