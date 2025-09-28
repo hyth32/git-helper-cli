@@ -18,6 +18,10 @@ build_fzf_menu() {
         --prompt="$prompt"
 }
 
+add_back_button_to_list() {
+    echo "Назад"$'\n'"$@"
+}
+
 current_branch=$(git symbolic-ref --short HEAD)
 
 print_current_branch() {
@@ -37,8 +41,7 @@ show_main_menu() {
 }
 
 change_branch() {
-    branches=$(git branch --all)
-    branches="Назад"$'\n'"$branches"
+    branches=$(add_back_button_to_list "$(git branch --all)")
 
     selected_branch=$(
         build_fzf_menu \
@@ -58,8 +61,7 @@ change_branch() {
 }
 
 show_commits() {
-    commits=$(git log --oneline)
-    commits="Назад"$'\n'"$commits"
+    commits=$(add_back_button_to_list "$(git log --oneline)")
 
     selected_commit=$(
         build_fzf_menu \
@@ -100,12 +102,12 @@ commit_changes() {
 
     git commit -m "$commit_message"
 
-    actions="Да"$'\n'"Нет"
+    actions=("Да" "Нет")
     selected_action=$(
         build_fzf_menu \
             "Запушить коммит?" \
             "Выберите:" \
-            "$actions"
+            "${actions[@]}"
     )
 
     if [ "$selected_action" == "Да" ]; then
