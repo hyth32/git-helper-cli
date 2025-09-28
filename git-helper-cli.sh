@@ -5,26 +5,43 @@ if ! git rev-parse --is-inside-work-tree &>/dev/null; then
     exit 1
 fi
 
-build_fzf_menu() {
+build_fzf() {
     local header="$1"
     local prompt="$2"
-    shift 2
+    local extra_opts="$3"
+
+    shift 3
     printf "%s\n" "$@" | fzf \
         --height 10 \
         --border \
         --reverse \
         --header-first \
         --header="$header" \
-        --prompt="$prompt"
+        --prompt="$prompt" \
+        --marker="*" \
+        $extra_opts
+}
+
+build_fzf_menu() {
+    local header="$1"
+    local prompt="$2"
+    shift 2
+    build_fzf "$header" "$prompt" "" "$@"
+}
+
+build_fzf_menu_multiselect() {
+    local header="$1"
+    local prompt="$2"
+    shift 2
+    build_fzf "$header" "$prompt" "--multi" "$@"
 }
 
 add_back_button_to_list() {
     echo "Назад"$'\n'"$@"
 }
 
-current_branch=$(git symbolic-ref --short HEAD)
-
 print_current_branch() {
+    current_branch=$(git symbolic-ref --short HEAD)
     echo "Текущая ветка: $current_branch"
 }
 
@@ -54,14 +71,13 @@ change_branch() {
         return
     else
         selected_branch=$(echo "$selected_branch" | sed 's/^ *//' | sed 's/^\* //')
-        git checkout "$selected_branch" >/dev/null 2>&1
-        current_branch="$selected_branch"
+        git checkout "$selected_branch"
         echo "Переключено на ветку: $selected_branch"
     fi
 }
 
 get_commits() {
-    echo "$(git log --oneline)"
+    git log --oneline
 }
 
 show_commits() {
@@ -83,10 +99,14 @@ show_commits() {
 
 show_commit_details() {
     commit="$1"
-    commit_hash=$(echo "$commit" | awk '{print $1}')
+    commit_hash=$(get_commit_hash "$commit")
     clear
     echo "Детали коммита $commit_hash:"
     git show --stat --color=always "$commit_hash" | less -R
+}
+
+get_commit_hash() {
+    echo "$1" | awk '{print $1}'
 }
 
 commit_changes() {
@@ -130,9 +150,40 @@ commit_changes() {
 }
 
 diff_commits() {
-    commits=$(add_back_button_to_list "$(get_commits)")   
+    commits=$(add_back_button_to_list "$(get_commits)")
 
-    echo "Здесь будет логика сравнения коммитов"
+    selected_commit=$(
+        build_fzf_menu_multiselect \
+            "Сравнение коммитов" \
+            "Выберите два коммита" \
+            "$commits"
+    )
+
+    if [ -z "${selected_commit:-}" ]; then
+        return
+    fi
+
+    mapfile -t selected_array <<< "$selected_commit"
+
+    filtered=()
+    for line in "${selected_array[@]}"; do
+        [[ "$line" != "Назад" ]] && filtered+=("$line")
+    done
+
+    case ${#filtered[@]} in
+        0) return ;;
+        1) show_commit_details "${filtered[0]}" ;;
+        2)
+            first_commit=$(get_commit_hash "${filtered[0]}")
+            second_commit=$(get_commit_hash "${filtered[1]}")
+            git diff "$first_commit" "$second_commit" | less -R
+            ;;
+        *) 
+            echo "Нужно выбрать максимум два коммита"
+            return_to_menu
+            ;;
+    esac
+
     return_to_menu
 }
 
