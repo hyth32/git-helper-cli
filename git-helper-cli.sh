@@ -33,7 +33,7 @@ return_to_menu() {
 }
 
 show_main_menu() {
-    actions=("Выбор ветки" "Список коммитов" "Коммит" "Выход")
+    actions=("Выбор ветки" "Список коммитов" "Сравнение коммитов" "Коммит" "Выход")
     build_fzf_menu \
         "$(print_current_branch)" \
         "Выберите действие: " \
@@ -60,8 +60,12 @@ change_branch() {
     fi
 }
 
+get_commits() {
+    echo "$(git log --oneline)"
+}
+
 show_commits() {
-    commits=$(add_back_button_to_list "$(git log --oneline)")
+    commits=$(add_back_button_to_list "$(get_commits)")
 
     selected_commit=$(
         build_fzf_menu \
@@ -73,11 +77,16 @@ show_commits() {
     if [ -z "$selected_commit" ] || [ "$selected_commit" == "Назад" ]; then
         return
     else
-        commit_hash=$(echo "$selected_commit" | awk '{print $1}')
-        clear
-        echo "Детали коммита $commit_hash:"
-        git show --stat --color=always "$commit_hash" | less -R
+        show_commit_details "$selected_commit"
     fi
+}
+
+show_commit_details() {
+    commit="$1"
+    commit_hash=$(echo "$commit" | awk '{print $1}')
+    clear
+    echo "Детали коммита $commit_hash:"
+    git show --stat --color=always "$commit_hash" | less -R
 }
 
 commit_changes() {
@@ -120,6 +129,13 @@ commit_changes() {
     return_to_menu
 }
 
+diff_commits() {
+    commits=$(add_back_button_to_list "$(get_commits)")   
+
+    echo "Здесь будет логика сравнения коммитов"
+    return_to_menu
+}
+
 while true; do
     choice=$(show_main_menu)
 
@@ -131,6 +147,7 @@ while true; do
     case "$choice" in
         "Выбор ветки") change_branch ;;
         "Список коммитов") show_commits ;;
+        "Сравнение коммитов") diff_commits ;;
         "Коммит") commit_changes ;;
         "Выход") echo "Выход"; exit 0 ;;
         *) echo "Неверный выбор" ;;
